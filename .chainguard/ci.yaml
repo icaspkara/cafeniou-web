@@ -10,3 +10,5 @@ checks:
     cmd: go test ./...
     network:
       egress: [proxy.golang.org, sum.golang.org]
+  hello:
+    cmd: echo "hello"
