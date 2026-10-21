@@ -1,12 +1,30 @@
 version: 1
 environment:
-  packages: [go]
+  packages: [git, gitleaks, libxml2-utils, lychee, tidy-html5]
 checks:
-  vet:
-    cmd: go vet ./...
+  html:
+    description: Validates every HTML page with HTML Tidy and fails on errors or warnings.
+    script: |
+      status=0
+      for f in *.html; do
+        # Open Graph <meta property> tags are standard, so don't warn on them.
+        tidy -quiet -errors --gnu-emacs yes --warn-proprietary-attributes no "$f" || status=1
+      done
+      exit $status
+  links:
+    description: Checks that links, images, and #anchors point to files and sections that exist. Runs offline.
+    cmd: lychee --offline --include-fragments --no-progress --exclude-path 404.html .
+  svg:
+    description: Checks that SVG files are well-formed XML, so icons render.
+    script: xmllint --noout *.svg
+  secrets:
+    description: Scans the repository and its history for committed secrets such as API keys and tokens.
+    cmd: gitleaks git --redact --no-banner .
+  external-links:
+    description: Checks that links to other websites still work. Advisory, because outside sites can be slow or down.
+    # Instagram blocks automated requests, so skip it rather than report false failures.
+    cmd: lychee --no-progress --exclude-path 404.html --exclude instagram.com .
+    advisory: true
+    timeout: 5m
     network:
-      egress: [proxy.golang.org, sum.golang.org]
-  test:
-    cmd: go test ./...
-    network:
-      egress: [proxy.golang.org, sum.golang.org]
+      egress: ["*"]
